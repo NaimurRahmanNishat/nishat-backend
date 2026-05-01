@@ -24,42 +24,102 @@ const createNewProduct = async (req, res) => {
 };
 
 // get all products
-const getAllProducts = async (req, res) => {
-    try {
-        const product = await Products.find({}).sort({ createdAt: -1 });
+// const getAllProducts = async (req, res) => {
+//     try {
+//         const product = await Products.find({}).sort({ createdAt: -1 });
 
-        // all product filtering
-        const {category, color, minPrice, maxPrice, page=1, limit=8} = req.query;
-        const filter = {};
-        if(category && category !== "all"){
-            filter.category = category;
-        }
-        if(color && color !== "all"){
-            filter.color = color;
-        }
-        if(minPrice && maxPrice){
-            const min = parseFloat(minPrice);
-            const max = parseFloat(maxPrice);
-            if(!isNaN(min) && !isNaN(max)){
-                filter.price = { $gte: min, $lte: max };
-            }
-        }
+//         // all product filtering
+//         const {category, color, minPrice, maxPrice, page=1, limit=8} = req.query;
+//         const filter = {};
+//         if(category && category !== "all"){
+//             filter.category = category;
+//         }
+//         if(color && color !== "all"){
+//             filter.color = color;
+//         }
+//         if(minPrice && maxPrice){
+//             const min = parseFloat(minPrice);
+//             const max = parseFloat(maxPrice);
+//             if(!isNaN(min) && !isNaN(max)){
+//                 filter.price = { $gte: min, $lte: max };
+//             }
+//         }
 
-        // pagination and filtering
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        const totalProducts = await Products.countDocuments(filter);
-        const totalPage = Math.ceil(totalProducts / parseInt(limit))
-        const products = await Products.find(filter)
-            .skip(skip)
-            .limit(parseInt(limit))
-            .populate('author', 'username email')
-            .sort({ createdAt: -1 });
+//         // pagination and filtering
+//         const skip = (parseInt(page) - 1) * parseInt(limit);
+//         const totalProducts = await Products.countDocuments(filter);
+//         const totalPage = Math.ceil(totalProducts / parseInt(limit))
+//         const products = await Products.find(filter)
+//             .skip(skip)
+//             .limit(parseInt(limit))
+//             .populate('author', 'username email')
+//             .sort({ createdAt: -1 });
         
-        return successResponse(res, 200, "Successfully get all products!", data={products, totalPage, totalProducts});
-    } catch (error) {
-        return errorResponse(res, 500, "Failed to get all products!", error);
+//         return successResponse(res, 200, "Successfully get all products!", data={products, totalPage, totalProducts});
+//     } catch (error) {
+//         return errorResponse(res, 500, "Failed to get all products!", error);
+//     }
+// };
+
+const getAllProducts = async (req, res) => {
+  try {
+    const {
+      category,
+      color,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 8,
+    } = req.query;
+
+    const filter = {};
+
+    if (category && category !== "all") {
+      filter.category = category;
     }
+
+    if (color && color !== "all") {
+      filter.color = color;
+    }
+
+    // price filter
+    if (minPrice || maxPrice) {
+      filter.price = {};
+
+      if (minPrice && !isNaN(parseFloat(minPrice))) {
+        filter.price.$gte = parseFloat(minPrice);
+      }
+
+      if (maxPrice && !isNaN(parseFloat(maxPrice))) {
+        filter.price.$lte = parseFloat(maxPrice);
+      }
+    }
+
+    // pagination safe
+    const pageNumber = parseInt(page) || 1;
+    const limitNumber = parseInt(limit) || 8;
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const totalProducts = await Products.countDocuments(filter);
+    const totalPage = Math.ceil(totalProducts / limitNumber);
+
+    const products = await Products.find(filter)
+      .skip(skip)
+      .limit(limitNumber)
+      .populate("author", "username email")
+      .sort({ createdAt: -1 });
+
+    return successResponse(
+      res,
+      200,
+      "Successfully get all products!",
+      { products, totalPage, totalProducts }
+    );
+  } catch (error) {
+    return errorResponse(res, 500, "Failed to get all products!", error);
+  }
 };
+
 
 // get a single prolducts
 const getSingleProduct = async (req, res) => {
